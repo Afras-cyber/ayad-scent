@@ -29,14 +29,14 @@ export type Database = {
           Tables: {
             "admin_users": {
                   Row: {
-                    "avatar_url": string | null,"created_at": string,"email": string,"id": string,"is_active": boolean,"last_login_at": string | null,"name": string,"password_hash": string | null,"phone": string | null,"role": Database["public"]['Enums']["admin_role"],"updated_at": string
+                    "created_at": string,"email": string,"full_name": string | null,"id": string,"is_active": boolean,"last_login_at": string | null,"role": Database["public"]['Enums']["admin_role"],"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "avatar_url"?: string | null,"created_at"?: string,"email": string,"id"?: string,"is_active"?: boolean,"last_login_at"?: string | null,"name": string,"password_hash"?: string | null,"phone"?: string | null,"role"?: Database["public"]['Enums']["admin_role"],"updated_at"?: string
+                    "created_at"?: string,"email": string,"full_name"?: string | null,"id": string,"is_active"?: boolean,"last_login_at"?: string | null,"role"?: Database["public"]['Enums']["admin_role"],"updated_at"?: string
                   }
                   Update: {
-                    "avatar_url"?: string | null,"created_at"?: string,"email"?: string,"id"?: string,"is_active"?: boolean,"last_login_at"?: string | null,"name"?: string,"password_hash"?: string | null,"phone"?: string | null,"role"?: Database["public"]['Enums']["admin_role"],"updated_at"?: string
+                    "created_at"?: string,"email"?: string,"full_name"?: string | null,"id"?: string,"is_active"?: boolean,"last_login_at"?: string | null,"role"?: Database["public"]['Enums']["admin_role"],"updated_at"?: string
                   }
                   Relationships: [
                     
@@ -71,14 +71,14 @@ export type Database = {
                   ]
                 },"delivery_zones": {
                   Row: {
-                    "created_at": string,"district": string,"estimated_days_max": number | null,"estimated_days_min": number | null,"fee_lkr": number,"id": string,"is_active": boolean,"province": string | null,"updated_at": string
+                    "district": string,"eta_max_days": number | null,"eta_min_days": number | null,"fee_lkr": number,"is_active": boolean,"is_serviceable": boolean,"sort_order": number,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"district": string,"estimated_days_max"?: number | null,"estimated_days_min"?: number | null,"fee_lkr"?: number,"id"?: string,"is_active"?: boolean,"province"?: string | null,"updated_at"?: string
+                    "district": string,"eta_max_days"?: number | null,"eta_min_days"?: number | null,"fee_lkr": number,"is_active"?: boolean,"is_serviceable"?: boolean,"sort_order"?: number,"updated_at"?: string
                   }
                   Update: {
-                    "created_at"?: string,"district"?: string,"estimated_days_max"?: number | null,"estimated_days_min"?: number | null,"fee_lkr"?: number,"id"?: string,"is_active"?: boolean,"province"?: string | null,"updated_at"?: string
+                    "district"?: string,"eta_max_days"?: number | null,"eta_min_days"?: number | null,"fee_lkr"?: number,"is_active"?: boolean,"is_serviceable"?: boolean,"sort_order"?: number,"updated_at"?: string
                   }
                   Relationships: [
                     
@@ -119,14 +119,14 @@ isOneToOne: false
                   ]
                 },"notes": {
                   Row: {
-                    "created_at": string,"id": string,"is_active": boolean,"name": string,"note_type": string | null,"slug": string
+                    "created_at": string,"id": string,"is_active": boolean,"name": string,"slug": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"id"?: string,"is_active"?: boolean,"name": string,"note_type"?: string | null,"slug": string
+                    "created_at"?: string,"id"?: string,"is_active"?: boolean,"name": string,"slug": string
                   }
                   Update: {
-                    "created_at"?: string,"id"?: string,"is_active"?: boolean,"name"?: string,"note_type"?: string | null,"slug"?: string
+                    "created_at"?: string,"id"?: string,"is_active"?: boolean,"name"?: string,"slug"?: string
                   }
                   Relationships: [
                     
@@ -291,14 +291,14 @@ isOneToOne: false
                   ]
                 },"product_notes": {
                   Row: {
-                    "intensity": number | null,"note_id": string,"product_id": string
+                    "intensity": number | null,"layer": Database["public"]['Enums']["note_layer"],"note_id": string,"product_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "intensity"?: number | null,"note_id": string,"product_id": string
+                    "intensity"?: number | null,"layer"?: Database["public"]['Enums']["note_layer"],"note_id": string,"product_id": string
                   }
                   Update: {
-                    "intensity"?: number | null,"note_id"?: string,"product_id"?: string
+                    "intensity"?: number | null,"layer"?: Database["public"]['Enums']["note_layer"],"note_id"?: string,"product_id"?: string
                   }
                   Relationships: [
                     {
@@ -317,14 +317,14 @@ isOneToOne: false
                   ]
                 },"product_variants": {
                   Row: {
-                    "compare_at_lkr": number | null,"created_at": string,"id": string,"is_active": boolean,"label": string,"price_lkr": number,"product_id": string,"sku": string | null,"stock": number,"updated_at": string
+                    "compare_at_lkr": number | null,"created_at": string,"id": string,"is_active": boolean,"label": string,"price_lkr": number,"product_id": string,"size_ml": number | null,"sku": string | null,"stock": number,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "compare_at_lkr"?: number | null,"created_at"?: string,"id"?: string,"is_active"?: boolean,"label": string,"price_lkr": number,"product_id": string,"sku"?: string | null,"stock"?: number,"updated_at"?: string
+                    "compare_at_lkr"?: number | null,"created_at"?: string,"id"?: string,"is_active"?: boolean,"label": string,"price_lkr": number,"product_id": string,"size_ml"?: number | null,"sku"?: string | null,"stock"?: number,"updated_at"?: string
                   }
                   Update: {
-                    "compare_at_lkr"?: number | null,"created_at"?: string,"id"?: string,"is_active"?: boolean,"label"?: string,"price_lkr"?: number,"product_id"?: string,"sku"?: string | null,"stock"?: number,"updated_at"?: string
+                    "compare_at_lkr"?: number | null,"created_at"?: string,"id"?: string,"is_active"?: boolean,"label"?: string,"price_lkr"?: number,"product_id"?: string,"size_ml"?: number | null,"sku"?: string | null,"stock"?: number,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -337,14 +337,14 @@ isOneToOne: false
                   ]
                 },"products": {
                   Row: {
-                    "concentration": string | null,"created_at": string,"description": string | null,"featured": boolean,"gender": string | null,"id": string,"is_active": boolean,"is_featured": boolean,"name": string,"rating_avg": number,"rating_count": number,"seo_description": string | null,"seo_title": string | null,"short_description": string | null,"slug": string,"updated_at": string
+                    "concentration": Database["public"]['Enums']["concentration_type"] | null,"created_at": string,"description": string | null,"freshness_score": number | null,"gender": string | null,"id": string,"is_active": boolean,"is_featured": boolean,"is_trending": boolean,"longevity_max_hours": number | null,"longevity_min_hours": number | null,"longevity_score": number | null,"name": string,"occasions": (Database["public"]['Enums']["occasion_type"])[],"price_from_lkr": number,"product_type": Database["public"]['Enums']["product_type"],"projection_score": number | null,"rating_avg": number,"rating_count": number,"scent_story": string | null,"search_vector": unknown,"seasons": (Database["public"]['Enums']["season_type"])[],"seo_description": string | null,"seo_title": string | null,"short_description": string | null,"slug": string,"sweetness_score": number | null,"trending_rank": number | null,"units_sold": number,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "concentration"?: string | null,"created_at"?: string,"description"?: string | null,"featured"?: boolean,"gender"?: string | null,"id"?: string,"is_active"?: boolean,"is_featured"?: boolean,"name": string,"rating_avg"?: number,"rating_count"?: number,"seo_description"?: string | null,"seo_title"?: string | null,"short_description"?: string | null,"slug": string,"updated_at"?: string
+                    "concentration"?: Database["public"]['Enums']["concentration_type"] | null,"created_at"?: string,"description"?: string | null,"freshness_score"?: number | null,"gender"?: string | null,"id"?: string,"is_active"?: boolean,"is_featured"?: boolean,"is_trending"?: boolean,"longevity_max_hours"?: number | null,"longevity_min_hours"?: number | null,"longevity_score"?: number | null,"name": string,"occasions"?: (Database["public"]['Enums']["occasion_type"])[],"price_from_lkr"?: number,"product_type"?: Database["public"]['Enums']["product_type"],"projection_score"?: number | null,"rating_avg"?: number,"rating_count"?: number,"scent_story"?: string | null,"search_vector"?: never,"seasons"?: (Database["public"]['Enums']["season_type"])[],"seo_description"?: string | null,"seo_title"?: string | null,"short_description"?: string | null,"slug": string,"sweetness_score"?: number | null,"trending_rank"?: number | null,"units_sold"?: number,"updated_at"?: string
                   }
                   Update: {
-                    "concentration"?: string | null,"created_at"?: string,"description"?: string | null,"featured"?: boolean,"gender"?: string | null,"id"?: string,"is_active"?: boolean,"is_featured"?: boolean,"name"?: string,"rating_avg"?: number,"rating_count"?: number,"seo_description"?: string | null,"seo_title"?: string | null,"short_description"?: string | null,"slug"?: string,"updated_at"?: string
+                    "concentration"?: Database["public"]['Enums']["concentration_type"] | null,"created_at"?: string,"description"?: string | null,"freshness_score"?: number | null,"gender"?: string | null,"id"?: string,"is_active"?: boolean,"is_featured"?: boolean,"is_trending"?: boolean,"longevity_max_hours"?: number | null,"longevity_min_hours"?: number | null,"longevity_score"?: number | null,"name"?: string,"occasions"?: (Database["public"]['Enums']["occasion_type"])[],"price_from_lkr"?: number,"product_type"?: Database["public"]['Enums']["product_type"],"projection_score"?: number | null,"rating_avg"?: number,"rating_count"?: number,"scent_story"?: string | null,"search_vector"?: never,"seasons"?: (Database["public"]['Enums']["season_type"])[],"seo_description"?: string | null,"seo_title"?: string | null,"short_description"?: string | null,"slug"?: string,"sweetness_score"?: number | null,"trending_rank"?: number | null,"units_sold"?: number,"updated_at"?: string
                   }
                   Relationships: [
                     
@@ -377,14 +377,14 @@ isOneToOne: false
                   ]
                 },"site_settings": {
                   Row: {
-                    "description": string | null,"is_public": boolean,"key": string,"updated_at": string,"value": NonNullable<Json>
+                    "is_public": boolean,"key": string,"updated_at": string,"value": NonNullable<Json>
                   }
                   ComputedFields: never
                   Insert: {
-                    "description"?: string | null,"is_public"?: boolean,"key": string,"updated_at"?: string,"value"?: NonNullable<Json>
+                    "is_public"?: boolean,"key": string,"updated_at"?: string,"value"?: NonNullable<Json>
                   }
                   Update: {
-                    "description"?: string | null,"is_public"?: boolean,"key"?: string,"updated_at"?: string,"value"?: NonNullable<Json>
+                    "is_public"?: boolean,"key"?: string,"updated_at"?: string,"value"?: NonNullable<Json>
                   }
                   Relationships: [
                     
@@ -420,10 +420,19 @@ isOneToOne: false
                            },
 "record_payment":
 { Args: { "p_payload": Json }; Returns: Json
+                           },
+"search_products":
+{ Args: { "p_availability"?: string,"p_collection"?: string,"p_gender"?: (string)[],"p_max"?: number,"p_min"?: number,"p_note_slugs"?: (string)[],"p_page"?: number,"p_page_size"?: number,"p_sale"?: boolean,"p_sizes"?: (number)[],"p_sort"?: string,"p_type"?: (string)[],"q"?: string }; Returns: Json
+                           },
+"show_limit":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
+"show_trgm":
+{ Args: { "": string }; Returns: (string)[]
                            }
           }
           Enums: {
-            "admin_role": "admin"|"staff","notification_event": "order_placed"|"payment_received"|"order_dispatched"|"order_delivered"|"order_cancelled","notification_status": "pending"|"processing"|"sent"|"delivered"|"read"|"failed"|"skipped","order_status": "pending"|"confirmed"|"packed"|"dispatched"|"delivered"|"cancelled"|"returned","payment_method": "cod"|"bank_transfer","payment_status": "unpaid"|"awaiting_verification"|"paid"|"refunded","review_status": "pending"|"approved"|"rejected"
+            "admin_role": "owner"|"manager"|"staff","concentration_type": "attar_oil"|"parfum"|"edp"|"edt","note_layer": "top"|"heart"|"base","notification_event": "order_placed"|"payment_received","notification_status": "pending"|"processing"|"sent"|"failed"|"skipped","occasion_type": "evening"|"party"|"wedding"|"date_night"|"office"|"everyday"|"festive","order_status": "pending"|"confirmed"|"processing"|"packed"|"shipped"|"delivered"|"cancelled"|"returned","payment_method": "cod"|"bank_transfer","payment_status": "unpaid"|"pending_verification"|"paid"|"failed"|"refunded","product_type": "attar"|"spray"|"gift_set","review_status": "pending"|"approved"|"rejected","season_type": "spring"|"summer"|"autumn"|"winter"|"all_year"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -543,7 +552,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "admin_role": ["admin", "staff"],"notification_event": ["order_placed", "payment_received", "order_dispatched", "order_delivered", "order_cancelled"],"notification_status": ["pending", "processing", "sent", "delivered", "read", "failed", "skipped"],"order_status": ["pending", "confirmed", "packed", "dispatched", "delivered", "cancelled", "returned"],"payment_method": ["cod", "bank_transfer"],"payment_status": ["unpaid", "awaiting_verification", "paid", "refunded"],"review_status": ["pending", "approved", "rejected"]
+            "admin_role": ["owner", "manager", "staff"],"concentration_type": ["attar_oil", "parfum", "edp", "edt"],"note_layer": ["top", "heart", "base"],"notification_event": ["order_placed", "payment_received"],"notification_status": ["pending", "processing", "sent", "failed", "skipped"],"occasion_type": ["evening", "party", "wedding", "date_night", "office", "everyday", "festive"],"order_status": ["pending", "confirmed", "processing", "packed", "shipped", "delivered", "cancelled", "returned"],"payment_method": ["cod", "bank_transfer"],"payment_status": ["unpaid", "pending_verification", "paid", "failed", "refunded"],"product_type": ["attar", "spray", "gift_set"],"review_status": ["pending", "approved", "rejected"],"season_type": ["spring", "summer", "autumn", "winter", "all_year"]
           }
         }
 } as const

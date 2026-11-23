@@ -1,41 +1,75 @@
--- AYAD initial schema (fresh Supabase project)
--- Includes: enums, tables, constraints, indexes, order code sequence, helper triggers
+﻿-- AYAD Scent Lab - initial schema (Decisions v1, reset-ready)
+-- Fresh project rebuild on Supabase (legacy MongoDB/API removed in app layer)
 
 begin;
 
+-- Extensions
 create extension if not exists pgcrypto;
+create extension if not exists pg_trgm;
 
 -- ===== Enums =====
 do $$ begin
-  create type order_status as enum ('pending','confirmed','packed','dispatched','delivered','cancelled','returned');
+  create type order_status as enum (
+    'pending', 'confirmed', 'processing', 'packed', 'shipped', 'delivered', 'cancelled', 'returned'
+  );
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type payment_method as enum ('cod','bank_transfer');
+  create type payment_method as enum ('cod', 'bank_transfer');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type payment_status as enum ('unpaid','awaiting_verification','paid','refunded');
+  create type payment_status as enum ('unpaid', 'pending_verification', 'paid', 'failed', 'refunded');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type notification_event as enum ('order_placed','payment_received','order_dispatched','order_delivered','order_cancelled');
+  create type notification_event as enum ('order_placed', 'payment_received');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type notification_status as enum ('pending','processing','sent','delivered','read','failed','skipped');
+  create type notification_status as enum ('pending', 'processing', 'sent', 'failed', 'skipped');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type review_status as enum ('pending','approved','rejected');
+  create type review_status as enum ('pending', 'approved', 'rejected');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type admin_role as enum ('admin','staff');
+  create type admin_role as enum ('owner', 'manager', 'staff');
 exception when duplicate_object then null; end $$;
 
--- ===== Sequences =====
-create sequence if not exists order_code_seq start 10001;
+do $$ begin
+  create type product_type as enum ('attar', 'spray', 'gift_set');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type concentration_type as enum ('attar_oil', 'parfum', 'edp', 'edt');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type note_layer as enum ('top', 'heart', 'base');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type occasion_type as enum ('evening', 'party', 'wedding', 'date_night', 'office', 'everyday', 'festive');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type season_type as enum ('spring', 'summer', 'autumn', 'winter', 'all_year');
+exception when duplicate_object then null; end $$;
+
+-- ===== Sequences / helpers =====
+create sequence if not exists order_code_seq start with 10001 increment by 1;
+
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
 
 -- ===== Catalog =====
 create table if not exists products (
@@ -45,18 +79,44 @@ create table if not exists products (
   short_description text,
   description text,
   gender text check (gender in ('men','women','unisex')),
+  product_type product_type not null default 'spray',
+  concentration concentration_type,
   is_active boolean not null default true,
   is_featured boolean not null default false,
+  is_trending boolean not null default false,
+  trending_rank integer,
+  price_from_lkr integer not null default 0 check (price_from_lkr >= 0),
+  units_sold integer not null default 0 check (units_sold >= 0),
   rating_avg numeric(2,1) not null default 0,
   rating_count integer not null default 0 check (rating_count >= 0),
+  longevity_score smallint check (longevity_score between 1 and 10),
+  projection_score smallint check (projection_score between 1 and 10),
+  sweetness_score smallint check (sweetness_score between 1 and 10),
+  freshness_score smallint check (freshness_score between 1 and 10),
+  longevity_min_hours smallint check (longevity_min_hours is null or longevity_min_hours >= 0),
+  longevity_max_hours smallint check (longevity_max_hours is null or longevity_max_hours >= 0),
+  occasions occasion_type[] not null default '{}'::occasion_type[],
+  seasons season_type[] not null default '{}'::season_type[],
+  scent_story text,
+  search_vector tsvector generated always as (
+    setweight(to_tsvector('simple', coalesce(name, '')), 'A') ||
+    setweight(to_tsvector('simple', coalesce(short_description, '')), 'B') ||
+    setweight(to_tsvector('simple', coalesce(description, '')), 'C')
+  ) stored,
+  seo_title text,
+  seo_description text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint products_longevity_hours_check check (
+    longevity_min_hours is null or longevity_max_hours is null or longevity_max_hours >= longevity_min_hours
+  )
 );
 
 create table if not exists product_variants (
   id uuid primary key default gen_random_uuid(),
   product_id uuid not null references products(id) on delete cascade,
   label text not null,
+  size_ml integer check (size_ml is null or size_ml > 0),
   sku text unique,
   price_lkr integer not null check (price_lkr >= 0),
   compare_at_lkr integer check (compare_at_lkr is null or compare_at_lkr >= price_lkr),
@@ -101,7 +161,6 @@ create table if not exists notes (
   id uuid primary key default gen_random_uuid(),
   slug text not null unique,
   name text not null,
-  note_type text check (note_type in ('top','middle','base','general')),
   is_active boolean not null default true,
   created_at timestamptz not null default now()
 );
@@ -109,6 +168,7 @@ create table if not exists notes (
 create table if not exists product_notes (
   product_id uuid not null references products(id) on delete cascade,
   note_id uuid not null references notes(id) on delete cascade,
+  layer note_layer not null default 'heart',
   intensity integer check (intensity between 1 and 5),
   primary key (product_id, note_id)
 );
@@ -259,98 +319,128 @@ create table if not exists banners (
 );
 
 create table if not exists delivery_zones (
-  id uuid primary key default gen_random_uuid(),
-  district text not null unique,
-  province text,
-  fee_lkr integer not null default 0 check (fee_lkr >= 0),
-  estimated_days_min integer check (estimated_days_min is null or estimated_days_min >= 0),
-  estimated_days_max integer check (estimated_days_max is null or estimated_days_max >= 0),
+  district text primary key,
+  fee_lkr integer not null check (fee_lkr >= 0),
+  eta_min_days integer check (eta_min_days is null or eta_min_days >= 0),
+  eta_max_days integer check (eta_max_days is null or eta_max_days >= 0),
+  is_serviceable boolean not null default true,
   is_active boolean not null default true,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  sort_order integer not null default 0,
+  updated_at timestamptz not null default now(),
+  constraint delivery_zones_eta_check check (
+    eta_min_days is null or eta_max_days is null or eta_max_days >= eta_min_days
+  )
 );
 
 create table if not exists site_settings (
   key text primary key,
   value jsonb not null default '{}'::jsonb,
-  description text,
   is_public boolean not null default false,
   updated_at timestamptz not null default now()
 );
 
 create table if not exists admin_users (
-  id uuid primary key default gen_random_uuid(),
+  id uuid primary key, -- matches auth.users.id
   email text not null unique,
-  name text not null,
-  password_hash text,
+  full_name text,
   role admin_role not null default 'staff',
   is_active boolean not null default true,
-  phone text,
-  avatar_url text,
   last_login_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 -- ===== Indexes =====
-create index if not exists idx_product_variants_product_id on product_variants(product_id);
+create index if not exists idx_products_active on products(is_active);
+create index if not exists idx_products_featured on products(is_featured);
+create index if not exists idx_products_trending on products(is_trending, trending_rank nulls last, units_sold desc);
+create index if not exists idx_products_type_gender on products(product_type, gender);
+create index if not exists idx_products_price_from on products(price_from_lkr);
+create index if not exists idx_products_created on products(created_at desc);
+create index if not exists idx_products_search_vector on products using gin(search_vector);
+create index if not exists idx_products_name_trgm on products using gin(name gin_trgm_ops);
+create index if not exists idx_product_variants_product on product_variants(product_id);
 create index if not exists idx_product_variants_active on product_variants(product_id, is_active);
-create index if not exists idx_product_images_product_id on product_images(product_id, sort_order);
-create index if not exists idx_products_active_featured on products(is_active, is_featured);
-create index if not exists idx_products_slug on products(slug);
+create index if not exists idx_product_variants_size on product_variants(size_ml);
+create index if not exists idx_product_images_product_sort on product_images(product_id, sort_order);
+create index if not exists idx_product_images_variant on product_images(variant_id);
 create index if not exists idx_collections_active on collections(is_active, sort_order);
-create index if not exists idx_orders_phone_e164 on orders(phone_e164);
-create index if not exists idx_orders_status_created_at on orders(status, created_at desc);
-create index if not exists idx_orders_code on orders(code);
-create index if not exists idx_orders_legacy_code on orders(legacy_code);
-create index if not exists idx_order_items_order_id on order_items(order_id);
-create index if not exists idx_order_events_order_id on order_events(order_id, created_at);
-create index if not exists idx_payments_order_id on payments(order_id, received_at desc);
-create index if not exists idx_invoices_order_id on invoices(order_id);
-create index if not exists idx_notification_outbox_status_next on notification_outbox(status, next_attempt_at);
-create index if not exists idx_whatsapp_messages_order_id on whatsapp_messages(order_id, created_at desc);
-create index if not exists idx_reviews_product_status on reviews(product_id, status);
-create index if not exists idx_reviews_status_featured on reviews(status, is_featured);
+create index if not exists idx_notes_slug on notes(slug);
+create index if not exists idx_product_notes_note on product_notes(note_id);
+create index if not exists idx_product_notes_layer on product_notes(product_id, layer);
+create index if not exists idx_orders_status_created on orders(status, created_at desc);
+create index if not exists idx_orders_phone on orders(phone_e164);
+create index if not exists idx_orders_created on orders(created_at desc);
+create index if not exists idx_order_items_order on order_items(order_id);
+create index if not exists idx_order_events_order_created on order_events(order_id, created_at desc);
+create index if not exists idx_payments_order on payments(order_id);
+create index if not exists idx_invoices_order on invoices(order_id);
+create index if not exists idx_outbox_status_next on notification_outbox(status, next_attempt_at);
+create index if not exists idx_outbox_order on notification_outbox(order_id);
+create index if not exists idx_whatsapp_messages_order on whatsapp_messages(order_id);
+create index if not exists idx_whatsapp_messages_phone on whatsapp_messages(phone_e164);
+create index if not exists idx_reviews_product_status on reviews(product_id, status, created_at desc);
+create index if not exists idx_reviews_status_created on reviews(status, created_at desc);
+create index if not exists idx_newsletter_active on newsletter_subscribers(is_active);
 create index if not exists idx_banners_active_sort on banners(is_active, placement, sort_order);
-create index if not exists idx_delivery_zones_active on delivery_zones(is_active, district);
+create index if not exists idx_delivery_zones_active on delivery_zones(is_active, sort_order);
+create index if not exists idx_admin_users_active on admin_users(is_active);
 
--- ===== updated_at helper =====
-create or replace function public.set_updated_at()
+-- ===== Triggers =====
+drop trigger if exists trg_products_updated_at on products;
+create trigger trg_products_updated_at before update on products for each row execute function public.set_updated_at();
+drop trigger if exists trg_product_variants_updated_at on product_variants;
+create trigger trg_product_variants_updated_at before update on product_variants for each row execute function public.set_updated_at();
+drop trigger if exists trg_collections_updated_at on collections;
+create trigger trg_collections_updated_at before update on collections for each row execute function public.set_updated_at();
+drop trigger if exists trg_orders_updated_at on orders;
+create trigger trg_orders_updated_at before update on orders for each row execute function public.set_updated_at();
+drop trigger if exists trg_reviews_updated_at on reviews;
+create trigger trg_reviews_updated_at before update on reviews for each row execute function public.set_updated_at();
+drop trigger if exists trg_banners_updated_at on banners;
+create trigger trg_banners_updated_at before update on banners for each row execute function public.set_updated_at();
+drop trigger if exists trg_delivery_zones_updated_at on delivery_zones;
+create trigger trg_delivery_zones_updated_at before update on delivery_zones for each row execute function public.set_updated_at();
+drop trigger if exists trg_site_settings_updated_at on site_settings;
+create trigger trg_site_settings_updated_at before update on site_settings for each row execute function public.set_updated_at();
+drop trigger if exists trg_admin_users_updated_at on admin_users;
+create trigger trg_admin_users_updated_at before update on admin_users for each row execute function public.set_updated_at();
+
+-- Maintain products.price_from_lkr from lowest active variant price
+create or replace function public.sync_product_price_from_lkr()
 returns trigger
 language plpgsql
 as $$
+declare
+  v_product_id uuid;
+  v_price integer;
 begin
-  new.updated_at = now();
-  return new;
+  v_product_id := coalesce(new.product_id, old.product_id);
+  select coalesce(min(price_lkr), 0)
+    into v_price
+  from public.product_variants
+  where product_id = v_product_id
+    and is_active = true;
+
+  update public.products
+  set price_from_lkr = v_price
+  where id = v_product_id;
+
+  return null;
 end;
 $$;
 
-do $$ begin
-  create trigger trg_products_updated_at before update on products for each row execute function public.set_updated_at();
-exception when duplicate_object then null; end $$;
-do $$ begin
-  create trigger trg_product_variants_updated_at before update on product_variants for each row execute function public.set_updated_at();
-exception when duplicate_object then null; end $$;
-do $$ begin
-  create trigger trg_collections_updated_at before update on collections for each row execute function public.set_updated_at();
-exception when duplicate_object then null; end $$;
-do $$ begin
-  create trigger trg_orders_updated_at before update on orders for each row execute function public.set_updated_at();
-exception when duplicate_object then null; end $$;
-do $$ begin
-  create trigger trg_reviews_updated_at before update on reviews for each row execute function public.set_updated_at();
-exception when duplicate_object then null; end $$;
-do $$ begin
-  create trigger trg_banners_updated_at before update on banners for each row execute function public.set_updated_at();
-exception when duplicate_object then null; end $$;
-do $$ begin
-  create trigger trg_delivery_zones_updated_at before update on delivery_zones for each row execute function public.set_updated_at();
-exception when duplicate_object then null; end $$;
-do $$ begin
-  create trigger trg_site_settings_updated_at before update on site_settings for each row execute function public.set_updated_at();
-exception when duplicate_object then null; end $$;
-do $$ begin
-  create trigger trg_admin_users_updated_at before update on admin_users for each row execute function public.set_updated_at();
-exception when duplicate_object then null; end $$;
+drop trigger if exists trg_variants_sync_price_from_insert on product_variants;
+create trigger trg_variants_sync_price_from_insert
+after insert on product_variants
+for each row execute function public.sync_product_price_from_lkr();
+drop trigger if exists trg_variants_sync_price_from_update on product_variants;
+create trigger trg_variants_sync_price_from_update
+after update of price_lkr, is_active, product_id on product_variants
+for each row execute function public.sync_product_price_from_lkr();
+drop trigger if exists trg_variants_sync_price_from_delete on product_variants;
+create trigger trg_variants_sync_price_from_delete
+after delete on product_variants
+for each row execute function public.sync_product_price_from_lkr();
 
 commit;
