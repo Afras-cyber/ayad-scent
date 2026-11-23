@@ -1,0 +1,274 @@
+import { auth } from "@/lib/auth";
+import { BoxLinear, CartLargeLinear, UsersGroupTwoRoundedLinear, GalleryLinear as ImageIcon, ArrowRightLinear, SendSquareLinear } from "solar-icon-set";;
+import Link from "next/link";
+import connectDB from "@/lib/db/mongoose";
+import Order from "@/lib/db/models/Order";
+import Product from "@/lib/db/models/Product";
+import { formatPrice } from "@/lib/format-price";
+import { Button } from "@/components/ui/button";
+import DashboardCharts from "@/components/admin/DashboardCharts";
+import { startOfDay, subDays, format } from "date-fns";
+
+export default async function AdminDashboard() {
+  const session = await auth();
+  await connectDB();
+
+  const sevenDaysAgo = startOfDay(subDays(new Date(), 6));
+
+  const [
+    totalOrders,
+    pendingOrders,
+    totalProducts,
+    revenueData,
+    last7DaysOrders,
+    recentOrders,
+    trendingProducts,
+  ] = await Promise.all([
+    Order.countDocuments(),
+    Order.countDocuments({ status: "inquiry" }),
+    Product.countDocuments(),
+    Order.aggregate([
+      { $match: { status: "delivered" } },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: {
+            $sum: { $ifNull: ["$negotiatedTotal", "$totalAmount"] },
+          },
+        },
+      },
+    ]),
+    Order.find({
+      status: "delivered",
+      updatedAt: { $gte: sevenDaysAgo },
+    })
+      .select("negotiatedTotal totalAmount updatedAt")
+      .lean(),
+    Order.find().sort({ createdAt: -1 }).limit(5).lean(),
+    Product.find().sort({ viewCount: -1 }).limit(5).lean(),
+  ]);
+
+  const revenue = revenueData[0]?.totalRevenue || 0;
+
+  // Generate chart data for last 7 days from in-memory fetched orders
+  const last7DaysData = Array.from({ length: 7 }, (_, index) => {
+    const i = 6 - index;
+    const d = subDays(new Date(), i);
+    const dayStart = startOfDay(d).getTime();
+    const dayEnd = new Date(startOfDay(d)).setHours(23, 59, 59, 999);
+
+    const dayRevenue = last7DaysOrders
+      .filter((order: any) => {
+        const time = new Date(order.updatedAt).getTime();
+        return time >= dayStart && time <= dayEnd;
+      })
+      .reduce(
+        (sum: number, order: any) =>
+          sum + (order.negotiatedTotal || order.totalAmount || 0),
+        0
+      );
+
+    return {
+      label: format(d, "EEE"),
+      value: dayRevenue,
+    };
+  });
+
+  return (
+    <div className="flex flex-col gap-8">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground">
+          Welcome back, {session?.user?.name || "Admin"}
+        </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border bg-card text-card-foreground shadow">
+          <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
+            <h3 className="tracking-tight text-sm font-medium">
+              Total Revenue
+            </h3>
+            <span className="text-muted-foreground">💰</span>
+          </div>
+          <div className="p-6 pt-0">
+            <div className="text-2xl font-bold">{formatPrice(revenue)}</div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border bg-card text-card-foreground shadow">
+          <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
+            <h3 className="tracking-tight text-sm font-medium">Total Orders</h3>
+            <CartLargeLinear className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div className="p-6 pt-0">
+            <div className="text-2xl font-bold">{totalOrders}</div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border bg-card text-card-foreground shadow">
+          <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
+            <h3 className="tracking-tight text-sm font-medium">
+              Pending Inquiries
+            </h3>
+            <UsersGroupTwoRoundedLinear className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div className="p-6 pt-0">
+            <div className="text-2xl font-bold">{pendingOrders}</div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border bg-card text-card-foreground shadow">
+          <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
+            <h3 className="tracking-tight text-sm font-medium">
+              Total Products
+            </h3>
+            <BoxLinear className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div className="p-6 pt-0">
+            <div className="text-2xl font-bold">{totalProducts}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <div className="col-span-4 rounded-xl border bg-card text-card-foreground shadow overflow-hidden">
+          <DashboardCharts data={last7DaysData} />
+        </div>
+        <div className="col-span-3 rounded-xl border bg-card text-card-foreground shadow">
+          <div className="p-6">
+            <h3 className="font-semibold leading-none tracking-tight mb-4">
+              Quick Actions
+            </h3>
+            <div className="grid gap-2">
+              <Link href="/admin/products/new">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-2"
+                >
+                  <BoxLinear className="h-4 w-4" /> Add New Product
+                </Button>
+              </Link>
+              <Link href="/admin/banners">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-2"
+                >
+                  <ImageIcon className="h-4 w-4" /> Manage Banners
+                </Button>
+              </Link>
+              <Link href="/admin/newsletter">
+                <Button variant="outline" className="w-full justify-start gap-2">
+                  <SendSquareLinear className="h-4 w-4" /> Newsletter Subscriptions
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
+        <div className="rounded-xl border bg-card text-card-foreground shadow">
+          <div className="p-6">
+            <h3 className="font-semibold leading-none tracking-tight mb-4">
+              Recent Orders
+            </h3>
+            <div className="relative w-full overflow-auto">
+              <table className="w-full caption-bottom text-sm">
+                <thead>
+                  <tr className="border-b transition-colors hover:bg-muted/50">
+                    <th className="h-10 px-2 text-left align-middle font-medium text-muted-foreground">
+                      Order
+                    </th>
+                    <th className="h-10 px-2 text-left align-middle font-medium text-muted-foreground">
+                      Customer
+                    </th>
+                    <th className="h-10 px-2 text-left align-middle font-medium text-muted-foreground">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentOrders.map((order: any) => (
+                    <tr
+                      key={order._id.toString()}
+                      className="border-b transition-colors hover:bg-muted/50"
+                    >
+                      <td className="p-2 align-middle font-medium">
+                        {order.orderNumber}
+                      </td>
+                      <td className="p-2 align-middle">
+                        {order.customer.name}
+                      </td>
+                      <td className="p-2 align-middle">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                            order.status === "delivered"
+                              ? "bg-green-100 text-green-800"
+                              : order.status === "inquiry"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-zinc-100 text-zinc-800"
+                          }`}
+                        >
+                          {order.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-4">
+              <Link
+                href="/admin/orders"
+                className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+              >
+                View all orders <ArrowRightLinear className="h-3 w-3" />
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border bg-card text-card-foreground shadow">
+          <div className="p-6">
+            <h3 className="font-semibold leading-none tracking-tight mb-4">
+              Trending Products
+            </h3>
+            <div className="space-y-4">
+              {trendingProducts.map((product: any) => (
+                <div key={product._id.toString()} className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-lg border bg-muted overflow-hidden flex-shrink-0">
+                    {product.images?.[0] ? (
+                      <img src={product.images[0]} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center text-[10px]">No img</div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold truncate">{product.name}</p>
+                    <p className="text-xs text-muted-foreground">{product.brand}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-black">{product.viewCount || 0}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase">Views</p>
+                  </div>
+                </div>
+              ))}
+              {trendingProducts.length === 0 && (
+                <p className="text-sm text-center text-muted-foreground py-8">No data yet</p>
+              )}
+            </div>
+            <div className="mt-4 border-t pt-4">
+              <Link
+                href="/admin/products"
+                className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+              >
+                View all products <ArrowRightLinear className="h-3 w-3" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
