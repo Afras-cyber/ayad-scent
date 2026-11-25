@@ -1,5 +1,5 @@
 {
-  "name": "legacysports",
+  "name": "ayad-scent-lab",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -15,6 +15,8 @@
     "@base-ui/react": "^1.4.1",
     "@hookform/resolvers": "^5.2.2",
     "@react-pdf/renderer": "^4.5.1",
+    "@supabase/ssr": "^0.2.0",
+    "@supabase/supabase-js": "^2.49.0",
     "@tanstack/react-query": "^5.100.6",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
@@ -48,6 +50,7 @@
     "@types/uuid": "^10.0.0",
     "dotenv": "^17.4.2",
     "eslint": "^9",
+    "server-only": "^0.0.1",
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
